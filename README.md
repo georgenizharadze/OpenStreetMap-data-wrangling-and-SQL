@@ -18,25 +18,27 @@ MB and 3 MB, in size, for initial auditing and schema compliance validation, res
 I parsed the full XML file and quantified a number of parameters to get an overall view of the
 data:
 Types and quantities of nodes:
-* 'node': 1,401,056
-* 'nd': 1,721,147
-* 'bounds': 1
-* 'member': 79,530
-* 'tag': 618,817
-* 'relation': 7,350
-* 'way': 212,674
-* 'osm': 1
+   `'node': 1,401,056`
+   `'nd': 1,721,147`
+   `'bounds': 1`
+   `'member': 79,530`
+   `'tag': 618,817`
+   `'relation': 7,350`
+   `'way': 212,674`
+   `'osm': 1`
+
 Below is a summary of string structures of the key (“k”) descriptions in the “tag” nodes. I used
 the same 3 categories as in the case study exercises, namely, lowercase, lowercase with colon,
 presence of problematic characters and “other”. The breakdown below is of the total number
 of “k” descriptions and also on the basis of unique ones:
 
-	All “k” descriptions	Unique “k” descriptions
-lower	463,963	480
-lower_colon	154,137	540
-problemchars	0	0
-other	717	133
-Total	618,817	1,153
+   |       |All “k” descriptions|Unique “k” descriptions|
+   |-------|:------------------:|----------------------:|
+   |lower  |463,963|480|
+   |lower\_colon|154,137|540|
+   |problemchars|0|0|
+   |other|717|133|
+   |Total|618,817|1,153|
 
 It is noteworthy that there are no “k” descriptions at all which contain problematic characters.
 Additionally, I counted unique contributors by the user id (“uid”) both in “nodes” and “way” nodes and the number came to 2,288.
@@ -53,23 +55,30 @@ Through a programmatic audit, I identified the following problems:
 *Consistency issues*
 * Through initial audit, I found the number of unique user IDs in the OSM file to be 2,288, and the number of unique user names - 2,292. This appeared inconsistent and I hypothesized that it was due to four users changing their user names while using the same user ID. After importing the data to SQL, I ran queries to check this and it indeed appeared to be the case. Four user IDs below have two user names listed for each:
 
-675506|MapDrawerXXX15
-675506|XardasNetpoint
-448601|stream13
-448601|Andrew Shelestov
-4147527|fly777
-4147527|fly\_kiev
-4711657|Veniamin Zolotukhin
-4711657|Venya Zolotukhin
+    675506|MapDrawerXXX15
+    
+    675506|XardasNetpoint
+    
+    448601|stream13
+    
+    448601|Andrew Shelestov
+    
+    4147527|fly777
+    
+    4147527|fly\_kiev
+    
+    4711657|Veniamin Zolotukhin
+    
+    4711657|Venya Zolotukhin
 
 * The programmatic audit of street names helped me identify a number of issues with the consistency of street name representation. Some of the problems were due to the use of different types of abbreviations, use or non-use of the dot ‘.’ character, etc. In other cases, inconsistency arose due to use of two different (but related) languages – Ukrainian and Russian, both of which are prevalent in Ukraine. For example, the word “street” would in some cases (majority of cases) be present in Ukrainian and in others – in Russian. In the clean-up, I replaced Russian end words by Ukrainian. Overall, I identified 5 types of required corrections (see below) to end words, which I included in the “mapping” dictionary, which served as an input for the “update_name” function, which I subsequently incorporated in the “shape_element” function.
 
-mapping = { 'ул.'.decode('utf-8') : 'вулиця'.decode('utf-8'),
-'ул'.decode('utf-8') : 'вулиця'.decode('utf-8'),
-'пл.'.decode('utf-8') : 'площа'.decode('utf-8'),
-'шоссе-2'.decode('utf-8') : 'шоссе'.decode('utf-8'),
-'улица'.decode('utf-8') : 'вулиця'.decode('utf-8')
-}
+    `mapping = { 'ул.'.decode('utf-8') : 'вулиця'.decode('utf-8'),
+    'ул'.decode('utf-8') : 'вулиця'.decode('utf-8'),
+    'пл.'.decode('utf-8') : 'площа'.decode('utf-8'),
+    'шоссе-2'.decode('utf-8') : 'шоссе'.decode('utf-8'),
+    'улица'.decode('utf-8') : 'вулиця'.decode('utf-8')
+    }`
 
 * I also detected that in several tags, unconventional designation was used for street address under “k”. Namely, instead of “addr:street”, either 'addr:street:en' or 'addr:street_1' was present. However, I established that this was the case in only 11 out of the total of c. 618K tags, therefore, I did not consider that this issue merited additional code modification and clean-up.
 
@@ -81,9 +90,9 @@ mapping = { 'ул.'.decode('utf-8') : 'вулиця'.decode('utf-8'),
 
 Counting unique users in both “nodes” and “ways” nodes and ranking them by the number of appearance:
 
-  SELECT uid, user, COUNT(\*) as num from (SELECT uid, user FROM nodes UNION ALL SELECT uid, user from ways) as united GROUP BY uid ORDER     BY num DESC;
+  `SELECT uid, user, COUNT(\*) as num from (SELECT uid, user FROM nodes UNION ALL SELECT uid, user from ways) as united GROUP BY uid ORDER     BY num DESC;`
     
-Output, top 10:
+`Output, top 10:
 [(561414, u'Freeways\_me', 160871),
 (1676637, u'Kilkenni', 120949),
 (371387, u'matvey_kiev_ua', 93157),
@@ -93,24 +102,24 @@ Output, top 10:
 (348674, u'Cabeleira', 43623),
 (188947, u'D_i_m', 35208),
 (353472, u'Barbos', 34878),
-(1872841, u'1gorok', 32352)]
+(1872841, u'1gorok', 32352)]`
 
 It is striking how many contributions each of these top users have made. I counted the total number of “ways” and “nodes” attributable to the top 50 users (out of the total of 2,288):
 
-  SELECT sum(num) FROM (SELECT uid, COUNT(\*) as num from (SELECT uid FROM nodes UNION ALL SELECT uid from ways) as united GROUP BY uid       ORDER BY num DESC LIMIT 50) as topsomany;
+  `SELECT sum(num) FROM (SELECT uid, COUNT(\*) as num from (SELECT uid FROM nodes UNION ALL SELECT uid from ways) as united GROUP BY uid       ORDER BY num DESC LIMIT 50) as topsomany;`
    
 The result came to 1,209,007. This is c. 75% of the total number of “ways” and “nodes”. This shows a striking pareto phenomenon – only about 2% of users being responsible for about three quarters of the information in the system.
 
 ### Amenities
 
 I retrieved all unique types of amenities by the following query:
-  SELECT DISTINCT value FROM (SELECT value FROM nodes\_tags WHERE key == "amenity") as allamenities ORDER BY value;
+  `SELECT DISTINCT value FROM (SELECT value FROM nodes\_tags WHERE key == "amenity") as allamenities ORDER BY value;`
   
 There are 119 different types of amenities. I browsed through them and select ones which I was curious to explore in more detail. Namely, I decided to look into arts centres, ATMs, co-working spaces and restaurants. 
 Retrieving the names of arts centres:
-   SELECT id, value FROM nodes\_tags WHERE key == "name" AND id IN (SELECT id FROM nodes\_tags WHERE key == "amenity" and value ==           "arts_centre");
+   `SELECT id, value FROM nodes\_tags WHERE key == "name" AND id IN (SELECT id FROM nodes\_tags WHERE key == "amenity" and value ==           "arts_centre");`
 
-306524501|Центр пам'яткознавства
+`306524501|Центр пам'яткознавства
 742273893|Пінчук Арт Центр
 1927478283|Дитячо-підлітковий клуб «Виноградар»
 2537586155|Квартира 57
@@ -124,18 +133,18 @@ Retrieving the names of arts centres:
 3087148673|Арткластер «Видубичі»
 3506121766|Центр Леся Курбаса(Державний центр театральних мистецтв ім.Леся Курбаса)
 3789104261|Галерея 36
-3789169357|Галерея Триптих
+3789169357|Галерея Триптих`
 
 Querying the total number ATMs: 
-  SELECT COUNT (\*) FROM nodes\_tags WHERE key == "amenity" and value == "atm";
-  Result: 741
+  `SELECT COUNT (\*) FROM nodes\_tags WHERE key == "amenity" and value == "atm";
+  Result: 741`
 
 Querying the names of ATM operators:
-  SELECT DISTINCT value FROM nodes\_tags WHERE key == "operator" AND id IN (SELECT id FROM nodes\_tags WHERE key == "amenity" and value ==   "atm") ORDER BY value;
+  `SELECT DISTINCT value FROM nodes\_tags WHERE key == "operator" AND id IN (SELECT id FROM nodes\_tags WHERE key == "amenity" and value ==   "atm") ORDER BY value;`
 
 A small extract of results:
 
-Credit Agricole
+`Credit Agricole
 Crédit Agricole
 Euronet
 Euronet Worldwide
@@ -156,19 +165,19 @@ Unicredit Bank
 Universal Bank
 …..
 VAB
-VAB Банк
+VAB Банк`
 
 We see that there is an issue with bank names – the same bank is often spelled in several different ways. This is problematic. For example, if we want to see how many ATMs there are in the city per each operator, we cannot readily do the grouping. We would have to do additional serious pre-processing of bank names to harmonize the spelling. 
 
 Co-working spaces are a new development in Kyiv and I was curious to see how many were listed in OSM and what their names were. The query and output are below: 
 
-  SELECT id, value FROM nodes\_tags WHERE key == "name" AND id IN (SELECT id FROM   nodes\_tags WHERE key == "amenity" and value ==           "coworking_space");
+  `SELECT id, value FROM nodes\_tags WHERE key == "name" AND id IN (SELECT id FROM   nodes\_tags WHERE key == "amenity" and value ==           "coworking_space");`
 
-3125606725|БеседниZzа
+`3125606725|БеседниZzа
 3452527225|БеседниZza
 3708816818|MediaHub
 4030243416|Неробоче місце - коворкінг
-4047682810|HUB 4.0
+4047682810|HUB 4.0`
 
 One co-working space seems to be present in OSM twice, under different IDs. So, it appears that there are four different co-working spaces documented in OSM. 
 
@@ -176,14 +185,14 @@ Analyzing restaurants:
 
 Total number of restaurants: 
     
-  SELECT COUNT (\*) FROM nodes\_tags WHERE key == "amenity" and value == "restaurant";
-  Result: 743
+  `SELECT COUNT (\*) FROM nodes\_tags WHERE key == "amenity" and value == "restaurant";
+  Result: 743`
 
 Top 10 cuisines by number of restaurants:
 
-  SELECT value, count(\*) as num FROM nodes\_tags WHERE key == "cuisine" AND id IN (SELECT id FROM   nodes\_tags WHERE key == "amenity" and   value == "restaurant") GROUP BY value ORDER BY num DESC limit 10;
+  `SELECT value, count(\*) as num FROM nodes\_tags WHERE key == "cuisine" AND id IN (SELECT id FROM   nodes\_tags WHERE key == "amenity" and   value == "restaurant") GROUP BY value ORDER BY num DESC limit 10;`
 
-Result:
+`Result:
 regional|50
 italian|49
 pizza|28
@@ -193,40 +202,40 @@ international|14
 asian|11
 georgian|11
 chinese|9
-burger|8
+burger|8`
 
 Then I queried for all the data available on Georgian restaurants, as it is my home country. The query is below but I’m not pasting the data output here for the economy of space.
 
-SELECT * FROM nodes_tags WHERE id IN (SELECT id FROM nodes_tags WHERE key == "amenity" and value == "restaurant") AND  id IN (SELECT id FROM nodes_tags WHERE key == "cuisine" and value IN ("georgian", "грузинская", "грузинская_кухня"));
+`SELECT * FROM nodes_tags WHERE id IN (SELECT id FROM nodes_tags WHERE key == "amenity" and value == "restaurant") AND  id IN (SELECT id FROM nodes_tags WHERE key == "cuisine" and value IN ("georgian", "грузинская", "грузинская_кухня"));`
 
 
 ### Infrastructure
 
 In my past career I worked in the power generation and distribution business. I saw in OpenStreetMap documentation that the system contains some data on electricity infrastructure. Therefore, I decided to explore this. 
 First I checked the different types of power infrastructure that exist in OSM. According to the documentation, the key for these features is “power”. Thus, I ran the following query and got following results:
-  SELECT DISTINCT value FROM nodes\_tags WHERE key == 'power';
+    `SELECT DISTINCT value FROM nodes\_tags WHERE key == 'power';`
   
 Result: 
-pole
+`pole
 transformer
 substation
 generator
 portal
 heliostat
 switch
-cable\_distribution\_cabinet
+cable\_distribution\_cabinet`
 
 I counted the numbers of generators and substations:
-    SELECT COUNT(*) FROM nodes_tags WHERE key == "power" and value == "generator";
+   `SELECT COUNT(*) FROM nodes_tags WHERE key == "power" and value == "generator";
     12
     SELECT COUNT(\*) FROM nodes\_tags WHERE key == "power" and value == "substation";
-    111
+    111`
     
 I explored the fuel source of the generators and saw that some of them were fossil fuel driven and others – renewable:
-  SELECT * FROM nodes\_tags WHERE id IN (SELECT id FROM nodes\_tags WHERE key == "power" and value == "generator") AND key == "source";
+  `SELECT * FROM nodes\_tags WHERE id IN (SELECT id FROM nodes\_tags WHERE key == "power" and value == "generator") AND key == "source";`
 
 Result: 
-1852185333|source|solar|generator
+`1852185333|source|solar|generator
 2251283199|source|hydro|generator
 2251283200|source|hydro|generator
 2251283201|source|hydro|generator
@@ -235,10 +244,10 @@ Result:
 4264705104|source|gas|generator
 4268835889|source|gas|generator
 4328509636|source|gas|generator
-4328509637|source|oil|generator
+4328509637|source|oil|generator`
 
 As far as power substations are concerned, I checked their prevalent voltage levels:
-SELECT * FROM nodes\_tags WHERE id IN (SELECT id FROM nodes\_tags WHERE key == "power" and value == "substation") and key == 'voltage';
+`SELECT * FROM nodes\_tags WHERE id IN (SELECT id FROM nodes\_tags WHERE key == "power" and value == "substation") and key == 'voltage';`
 For the economy of space, I am not pasting the output here, however, I saw that the vast majority of substations host transformers which step down voltage from 10kV to 0.4kV. Three larger substations were also listed, with 35kV / 10 kV stepdown levels. 
 
 
