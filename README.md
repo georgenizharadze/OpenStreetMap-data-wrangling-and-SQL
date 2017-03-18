@@ -1,4 +1,4 @@
-# OpenStreetMap data wrangling and transfer to SQL
+# OpenStreetMap data wrangling, SQL design and data analysis
 
 In this project I deal with a large volume of incomplete and messy data. I desing and implement a programmatic audit and clean-up, design an relational database schema and transfer the processed data to SQL, where it can be queried and analyzed efficiently. 
 
@@ -15,17 +15,17 @@ MB and 3 MB, in size, for initial auditing and schema compliance validation, res
 
 ## Data overview
 
-I parsed the full XML file and quantified a number of parameters to get an overall view of the
-data:
-Types and quantities of nodes:
-   `'node': 1,401,056`
-   `'nd': 1,721,147`
-   `'bounds': 1`
-   `'member': 79,530`
-   `'tag': 618,817`
-   `'relation': 7,350`
-   `'way': 212,674`
-   `'osm': 1`
+I parsed the full XML file and quantified a number of parameters to get an overall view of the data. 
+
+Types and quantities of nodes:  
+   `'node': 1,401,056`  
+   `'nd': 1,721,147`  
+   `'bounds': 1`  
+   `'member': 79,530`  
+   `'tag': 618,817`  
+   `'relation': 7,350  `
+   `'way': 212,674`  
+   `'osm': 1`  
 
 Below is a summary of string structures of the key (“k”) descriptions in the “tag” nodes. I used
 the same 3 categories as in the case study exercises, namely, lowercase, lowercase with colon,
@@ -212,7 +212,7 @@ Then I queried for all the data available on Georgian restaurants, as it is my h
 ### Infrastructure
 
 In my past career I worked in the power generation and distribution business. I saw in OpenStreetMap documentation that the system contains some data on electricity infrastructure. Therefore, I decided to explore this. 
-First I checked the different types of power infrastructure that exist in OSM. According to the documentation, the key for these features is “power”. Thus, I ran the following query and got following results:
+First I checked the different types of power infrastructure that exist in OSM. According to the documentation, the key for these features is “power”. Thus, I ran the following query and got following results:  
     `SELECT DISTINCT value FROM nodes\_tags WHERE key == 'power';`
   
 Result: 
